@@ -7,6 +7,7 @@ using v2rayN.HttpProxyHandler;
 using v2rayN.Mode;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Win32;
 
 namespace v2rayN.Forms
 {
@@ -58,6 +59,7 @@ namespace v2rayN.Forms
                 HideForm();
                 return;
             }
+            CloseSysAgent();//退出时候关闭系统代理
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
@@ -1006,6 +1008,18 @@ namespace v2rayN.Forms
 
             menuSysAgentEnabled.Checked =
             menuSysAgentMode.Enabled = isChecked;
+        }
+
+        /// <summary>
+        /// 关闭系统代理
+        /// </summary>
+        private void CloseSysAgent()
+        {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
+            key.SetValue("ProxyEnable", 0);//关闭http代理
+            key.DeleteValue("AutoConfigURL");//关闭pac代理
+            key.Flush();
+            key.Close();
         }
         #endregion
 
