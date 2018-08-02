@@ -1016,8 +1016,12 @@ namespace v2rayN.Forms
         private void CloseSysAgent()
         {
             RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
-            key.SetValue("ProxyEnable", 0);//关闭http代理
-            key.DeleteValue("AutoConfigURL");//关闭pac代理
+            try
+            {
+                key.SetValue("ProxyEnable", 0);//关闭http代理
+                key.DeleteValue("AutoConfigURL");//关闭pac代理
+            }
+            catch { }
             key.Flush();
             key.Close();
         }
