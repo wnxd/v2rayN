@@ -8,6 +8,8 @@ namespace v2rayN.Forms
 {
     public partial class SubSettingForm : BaseForm
     {
+        List<SubSettingControl> lstControls = new List<SubSettingControl>();
+
         public SubSettingForm()
         {
             InitializeComponent();
@@ -20,44 +22,57 @@ namespace v2rayN.Forms
                 config.subItem = new List<SubItem>();
             }
 
-            BindingSub();
+            RefreshSubsView();
         }
 
         /// <summary>
-        /// 绑定数据
+        /// 刷新列表
         /// </summary>
-        private void BindingSub()
+        private void RefreshSubsView()
         {
-            for (int k = config.subItem.Count; k < 3; k++)
-            {
-                var subItem = new SubItem();
-                subItem.id =
-                subItem.remarks =
-                subItem.url = string.Empty;
+            panCon.Controls.Clear();
+            lstControls.Clear();
 
-                config.subItem.Add(subItem);
+            for (int k = config.subItem.Count - 1; k >= 0; k--)
+            {
+                var item = config.subItem[k];
+                if (Utils.IsNullOrEmpty(item.remarks)
+                    && Utils.IsNullOrEmpty(item.url))
+                {
+                    if (!Utils.IsNullOrEmpty(item.id))
+                    {
+                        ConfigHandler.RemoveServerViaSubid(ref config, item.id);
+                    }
+                    config.subItem.RemoveAt(k);
+                }
             }
 
-            txtRemarks.Text = config.subItem[0].remarks.ToString();
-            txtUrl.Text = config.subItem[0].url.ToString();
+            for (int k = 0; k < config.subItem.Count; k++)
+            {
+                var item = config.subItem[k];
+                SubSettingControl control = new SubSettingControl();
+                control.OnButtonClicked += Control_OnButtonClicked;
+                control.subItem = item;
+                control.Dock = DockStyle.Top;
 
-            txtRemarks2.Text = config.subItem[1].remarks.ToString();
-            txtUrl2.Text = config.subItem[1].url.ToString();
+                panCon.Controls.Add(control);
+                panCon.Controls.SetChildIndex(control, 0);
 
-            txtRemarks3.Text = config.subItem[2].remarks.ToString();
-            txtUrl3.Text = config.subItem[2].url.ToString();
+                lstControls.Add(control);
+            }
+        }
+
+        private void Control_OnButtonClicked(object sender, EventArgs e)
+        {
+            RefreshSubsView();
         }
 
         private void btnOK_Click(object sender, EventArgs e)
         {
-            config.subItem[0].remarks = txtRemarks.Text.Trim();
-            config.subItem[0].url = txtUrl.Text.Trim();
-
-            config.subItem[1].remarks = txtRemarks2.Text.Trim();
-            config.subItem[1].url = txtUrl2.Text.Trim();
-
-            config.subItem[2].remarks = txtRemarks3.Text.Trim();
-            config.subItem[2].url = txtUrl3.Text.Trim();
+            if (config.subItem.Count <= 0)
+            {
+                AddSub();
+            }
 
             if (ConfigHandler.SaveSubItem(ref config) == 0)
             {
@@ -65,13 +80,30 @@ namespace v2rayN.Forms
             }
             else
             {
-                UI.Show("操作失败，请检查重试");
+                UI.Show(UIRes.I18N("OperationFailed"));
             }
         }
 
         private void btnClose_Click(object sender, EventArgs e)
         {
             this.DialogResult = DialogResult.Cancel;
+        }
+
+        private void btnAdd_Click(object sender, EventArgs e)
+        {
+            AddSub();
+
+            RefreshSubsView();
+        }
+
+
+        private void AddSub()
+        {
+            var subItem = new SubItem();
+            subItem.id = string.Empty;
+            subItem.remarks = "remarks";
+            subItem.url = "url";
+            config.subItem.Add(subItem);
         }
     }
 }

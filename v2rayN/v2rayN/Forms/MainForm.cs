@@ -39,6 +39,7 @@ namespace v2rayN.Forms
             ConfigHandler.LoadConfig(ref config);
             v2rayHandler = new V2rayHandler();
             v2rayHandler.ProcessEvent += v2rayHandler_ProcessEvent;
+
         }
 
         private void MainForm_Shown(object sender, EventArgs e)
@@ -47,6 +48,8 @@ namespace v2rayN.Forms
             RefreshServers();
 
             LoadV2ray();
+
+            HideForm();
 
         }
 
@@ -68,8 +71,32 @@ namespace v2rayN.Forms
             {
                 HideForm();
             }
+            else
+            {
+                //this.splitContainer1.SplitterDistance = config.uiItem.mainQRCodeWidth;
+            }
         }
 
+        private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
+        {
+            //config.uiItem.mainQRCodeWidth = splitContainer1.SplitterDistance;
+        }
+
+
+        //private const int WM_QUERYENDSESSION = 0x0011;
+        //protected override void WndProc(ref Message m)
+        //{
+        //    switch (m.Msg)
+        //    {
+        //        case WM_QUERYENDSESSION:
+        //            CloseV2ray();
+        //            m.Result = (IntPtr)1;
+        //            break;
+        //        default:
+        //            base.WndProc(ref m);
+        //            break;
+        //    }
+        //}
         #endregion
 
         #region 显示服务器 listview 和 menu
@@ -98,16 +125,14 @@ namespace v2rayN.Forms
             lvServers.HeaderStyle = ColumnHeaderStyle.Nonclickable;
 
             lvServers.Columns.Add("", 30, HorizontalAlignment.Center);
-            lvServers.Columns.Add("服务类型", 80, HorizontalAlignment.Left);
-            lvServers.Columns.Add("别名", 100, HorizontalAlignment.Left);
-            lvServers.Columns.Add("地址", 90, HorizontalAlignment.Left);
-            lvServers.Columns.Add("端口", 50, HorizontalAlignment.Left);
-            //lvServers.Columns.Add("用户ID(id)", 110, HorizontalAlignment.Left);
-            //lvServers.Columns.Add("额外ID(alterId)", 110, HorizontalAlignment.Left);
-            lvServers.Columns.Add("加密方式", 100, HorizontalAlignment.Left);
-            lvServers.Columns.Add("传输协议", 60, HorizontalAlignment.Left);
-            lvServers.Columns.Add("订阅", 50, HorizontalAlignment.Left);
-            lvServers.Columns.Add("测试结果", 150, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvServiceType"), 80, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvAlias"), 100, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvAddress"), 120, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvPort"), 50, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvEncryptionMethod"), 90, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvTransportProtocol"), 70, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvSubscription"), 50, HorizontalAlignment.Left);
+            lvServers.Columns.Add(UIRes.I18N("LvTestResults"), 100, HorizontalAlignment.Left);
 
         }
 
@@ -256,7 +281,7 @@ namespace v2rayN.Forms
 
             if (config.vmess[index].configType == (int)EConfigType.Vmess)
             {
-                AddServerForm fm = new AddServerForm();
+                var fm = new AddServerForm();
                 fm.EditIndex = index;
                 if (fm.ShowDialog() == DialogResult.OK)
                 {
@@ -267,18 +292,27 @@ namespace v2rayN.Forms
             }
             else if (config.vmess[index].configType == (int)EConfigType.Shadowsocks)
             {
-                AddServer3Form fm = new AddServer3Form();
+                var fm = new AddServer3Form();
                 fm.EditIndex = index;
                 if (fm.ShowDialog() == DialogResult.OK)
                 {
-                    //刷新
+                    RefreshServers();
+                    LoadV2ray();
+                }
+            }
+            else if (config.vmess[index].configType == (int)EConfigType.Socks)
+            {
+                var fm = new AddServer4Form();
+                fm.EditIndex = index;
+                if (fm.ShowDialog() == DialogResult.OK)
+                {
                     RefreshServers();
                     LoadV2ray();
                 }
             }
             else
             {
-                AddServer2Form fm2 = new AddServer2Form();
+                var fm2 = new AddServer2Form();
                 fm2.EditIndex = index;
                 if (fm2.ShowDialog() == DialogResult.OK)
                 {
@@ -287,11 +321,19 @@ namespace v2rayN.Forms
                     LoadV2ray();
                 }
             }
-
         }
 
         private void lvServers_KeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Control)
+            {
+                switch (e.KeyCode)
+                {
+                    case Keys.A:
+                        menuSelectAll_Click(null, null);
+                        break;
+                }
+            }
             switch (e.KeyCode)
             {
                 case Keys.Enter:
@@ -329,7 +371,7 @@ namespace v2rayN.Forms
             {
                 return;
             }
-            if (UI.ShowYesNo("是否确定移除服务器?") == DialogResult.No)
+            if (UI.ShowYesNo(UIRes.I18N("RemoveServer")) == DialogResult.No)
             {
                 return;
             }
@@ -379,14 +421,11 @@ namespace v2rayN.Forms
         {
             if (!config.sysAgentEnabled || config.listenerType != 1)
             {
-                UI.Show("此功能依赖Http全局代理,请先设置正确。");
+                UI.Show(UIRes.I18N("NeedHttpGlobalProxy"));
                 return;
             }
 
-            UI.Show("注意：" +
-                  "\r\n此功能依赖Http全局代理!" +
-                  "\r\n测试过程中,请不要操作任何功能!" +
-                  "\r\n测试完成后,请手工调整Http全局代理和活动节点。");
+            UI.Show(UIRes.I18N("SpeedServerTips"));
 
             GetLvSelectedIndex();
             ServerSpeedTest();
@@ -401,7 +440,7 @@ namespace v2rayN.Forms
             }
             if (config.vmess[index].configType != (int)EConfigType.Vmess)
             {
-                UI.Show("非Vmess服务，此功能无效");
+                UI.Show(UIRes.I18N("NonVmessService"));
                 return;
             }
 
@@ -427,7 +466,7 @@ namespace v2rayN.Forms
             }
             else
             {
-                UI.Show(string.Format("客户端配置文件保存在:{0}", fileName));
+                UI.Show(string.Format(UIRes.I18N("SaveClientConfigurationIn"), fileName));
             }
         }
 
@@ -440,7 +479,7 @@ namespace v2rayN.Forms
             }
             if (config.vmess[index].configType != (int)EConfigType.Vmess)
             {
-                UI.Show("非Vmess服务，此功能无效");
+                UI.Show(UIRes.I18N("NonVmessService"));
                 return;
             }
 
@@ -466,7 +505,7 @@ namespace v2rayN.Forms
             }
             else
             {
-                UI.Show(string.Format("服务端配置文件保存在:{0}", fileName));
+                UI.Show(string.Format(UIRes.I18N("SaveServerConfigurationIn"), fileName));
             }
         }
 
@@ -488,10 +527,31 @@ namespace v2rayN.Forms
             if (sb.Length > 0)
             {
                 Utils.SetClipboardData(sb.ToString());
-                UI.Show(string.Format("批量导出分享URL至剪贴板成功"));
+                UI.Show(UIRes.I18N("BatchExportURLSuccessfully"));
             }
         }
 
+        private void menuExport2SubContent_Click(object sender, EventArgs e)
+        {
+            GetLvSelectedIndex();
+
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < lvSelecteds.Count; k++)
+            {
+                string url = ConfigHandler.GetVmessQRCode(config, lvSelecteds[k]);
+                if (Utils.IsNullOrEmpty(url))
+                {
+                    continue;
+                }
+                sb.Append(url);
+                sb.AppendLine();
+            }
+            if (sb.Length > 0)
+            {
+                Utils.SetClipboardData(Utils.Base64Encode(sb.ToString()));
+                UI.Show(UIRes.I18N("BatchExportSubscriptionSuccessfully"));
+            }
+        }
 
         private void tsbOptionSetting_Click(object sender, EventArgs e)
         {
@@ -525,7 +585,7 @@ namespace v2rayN.Forms
         {
             if (index < 0)
             {
-                UI.Show("请先选择服务器");
+                UI.Show(UIRes.I18N("PleaseSelectServer"));
                 return -1;
             }
             if (ConfigHandler.SetDefaultServer(ref config, index) == 0)
@@ -549,7 +609,7 @@ namespace v2rayN.Forms
             {
                 if (lvServers.SelectedIndices.Count <= 0)
                 {
-                    UI.Show("请先选择服务器");
+                    UI.Show(UIRes.I18N("PleaseSelectServer"));
                     return index;
                 }
 
@@ -568,13 +628,11 @@ namespace v2rayN.Forms
 
         private void menuAddCustomServer_Click(object sender, EventArgs e)
         {
-            UI.Show("注意,自定义配置：" +
-                    "\r\n完全依赖您自己的配置，不能使用所有设置功能。" +
-                    "\r\n在自定义配置inbound中有socks port等于设置中的port时，系统代理才可用");
+            UI.Show(UIRes.I18N("CustomServerTips"));
 
             OpenFileDialog fileDialog = new OpenFileDialog();
             fileDialog.Multiselect = false;
-            fileDialog.Filter = "Config|*.json|所有文件|*.*";
+            fileDialog.Filter = "Config|*.json|All|*.*";
             if (fileDialog.ShowDialog() != DialogResult.OK)
             {
                 return;
@@ -590,18 +648,30 @@ namespace v2rayN.Forms
                 //刷新
                 RefreshServers();
                 LoadV2ray();
-                UI.Show(string.Format("成功导入自定义配置服务器"));
+                UI.Show(UIRes.I18N("SuccessfullyImportedCustomServer"));
             }
             else
             {
-                UI.Show(string.Format("导入自定义配置服务器失败"));
+                UI.Show(UIRes.I18N("FailedImportedCustomServer"));
             }
         }
 
         private void menuAddShadowsocksServer_Click(object sender, EventArgs e)
         {
-            HideForm();
-            AddServer3Form fm = new AddServer3Form();
+            var fm = new AddServer3Form();
+            fm.EditIndex = -1;
+            if (fm.ShowDialog() == DialogResult.OK)
+            {
+                //刷新
+                RefreshServers();
+                LoadV2ray();
+            }
+            ShowForm();
+        }
+        
+        private void menuAddSocksServer_Click(object sender, EventArgs e)
+        { 
+            var fm = new AddServer4Form();
             fm.EditIndex = -1;
             if (fm.ShowDialog() == DialogResult.OK)
             {
@@ -617,7 +687,7 @@ namespace v2rayN.Forms
             string clipboardData = Utils.GetClipboardData();
             if (AddBatchServers(clipboardData) == 0)
             {
-                UI.Show(string.Format("从剪贴板导入批量URL成功"));
+                UI.Show(UIRes.I18N("SuccessfullyImportedServerViaClipboard"));
             }
         }
 
@@ -629,12 +699,16 @@ namespace v2rayN.Forms
 
         private int AddBatchServers(string clipboardData, string subid = "")
         {
-            if (ConfigHandler.AddBatchServers(ref config, clipboardData, subid) == 0)
+            if (ConfigHandler.AddBatchServers(ref config, clipboardData, subid) != 0)
             {
-                RefreshServers();
-                return 0;
+                clipboardData = Utils.Base64Decode(clipboardData);
+                if (ConfigHandler.AddBatchServers(ref config, clipboardData, subid) != 0)
+                {
+                    return -1;
+                }
             }
-            return -1;
+            RefreshServers();
+            return 0;
         }
 
         #endregion
@@ -649,6 +723,12 @@ namespace v2rayN.Forms
         /// <param name="msg"></param>
         void v2rayHandler_ProcessEvent(bool notify, string msg)
         {
+            AppendText(notify, msg);
+        }
+
+        delegate void AppendTextDelegate(string text);
+        void AppendText(bool notify, string msg)
+        {
             try
             {
                 AppendText(msg);
@@ -661,8 +741,6 @@ namespace v2rayN.Forms
             {
             }
         }
-
-        delegate void AppendTextDelegate(string text);
 
         void AppendText(string text)
         {
@@ -743,14 +821,19 @@ namespace v2rayN.Forms
             this.Activate();
             //this.notifyIcon1.Visible = false;
             this.ShowInTaskbar = true;
+
+            SetVisibleCore(true);
         }
 
         private void HideForm()
         {
             this.WindowState = FormWindowState.Minimized;
             this.Hide();
+            this.notifyMain.Icon = this.Icon;
             this.notifyMain.Visible = true;
             this.ShowInTaskbar = false;
+
+            SetVisibleCore(false);
         }
 
         #endregion
@@ -815,7 +898,7 @@ namespace v2rayN.Forms
                 SetTestResult(lvSelecteds[index], "testing...");
 
                 v2rayHandler.LoadV2ray(config);
-                v2rayUpdateHandle2.UpdateV2rayCore(config, url);
+                v2rayUpdateHandle2.DownloadFileAsync(config, url);
                 testCounter++;
                 return 0;
             }
@@ -841,7 +924,7 @@ namespace v2rayN.Forms
                 {
                     if (args.Success)
                     {
-                        v2rayHandler_ProcessEvent(false, args.Msg);
+                        AppendText(false, args.Msg);
                         SetTestResult(lvSelecteds[testCounter - 1], args.Msg);
 
                         if (ServerSpeedTestSub(testCounter, url) != 0)
@@ -852,14 +935,14 @@ namespace v2rayN.Forms
                     }
                     else
                     {
-                        v2rayHandler_ProcessEvent(false, args.Msg);
+                        AppendText(false, args.Msg);
                     }
                 };
                 v2rayUpdateHandle2.Error += (sender2, args) =>
                 {
                     SetTestResult(lvSelecteds[testCounter - 1], args.GetException().Message);
-                    v2rayHandler_ProcessEvent(true, args.GetException().Message);
-
+                    AppendText(true, args.GetException().Message);
+                     
                     if (ServerSpeedTestSub(testCounter, url) != 0)
                     {
                         RefreshServers();
@@ -901,7 +984,7 @@ namespace v2rayN.Forms
             int index = GetLvSelectedIndex();
             if (index < 0)
             {
-                UI.Show("请先选择服务器");
+                UI.Show(UIRes.I18N("PleaseSelectServer"));
                 return;
             }
             if (ConfigHandler.MoveServer(ref config, index, eMove) == 0)
@@ -909,6 +992,13 @@ namespace v2rayN.Forms
                 //刷新
                 RefreshServers();
                 LoadV2ray();
+            }
+        }
+        private void menuSelectAll_Click(object sender, EventArgs e)
+        {
+            foreach (ListViewItem item in lvServers.Items)
+            {
+                item.Selected = true;
             }
         }
 
@@ -1044,32 +1134,33 @@ namespace v2rayN.Forms
                 {
                     if (args.Success)
                     {
-                        v2rayHandler_ProcessEvent(false, "解析V2rayCore成功！");
+                        AppendText(false, UIRes.I18N("MsgParsingV2rayCoreSuccessfully"));
 
                         string url = args.Msg;
                         this.Invoke((MethodInvoker)(delegate
                         {
-                            if (MessageBox.Show(this, "是否下载?\r\n" + url, "YesNo", MessageBoxButtons.YesNo) == DialogResult.No)
+
+                            if (UI.ShowYesNo(string.Format(UIRes.I18N("DownloadYesNo"), url)) == DialogResult.No)
                             {
                                 return;
                             }
                             else
                             {
-                                v2rayUpdateHandle.UpdateV2rayCore(config, url);
+                                v2rayUpdateHandle.DownloadFileAsync(config, url);
                             }
                         }));
                     }
                     else
                     {
-                        v2rayHandler_ProcessEvent(false, args.Msg);
+                        AppendText(false, args.Msg);
                     }
                 };
                 v2rayUpdateHandle.UpdateCompleted += (sender2, args) =>
                 {
                     if (args.Success)
                     {
-                        v2rayHandler_ProcessEvent(false, "下载V2rayCore成功！");
-                        v2rayHandler_ProcessEvent(false, "正在解压......");
+                        AppendText(false, UIRes.I18N("MsgDownloadV2rayCoreSuccessfully"));
+                        AppendText(false, UIRes.I18N("MsgUnpacking"));
 
                         try
                         {
@@ -1086,30 +1177,30 @@ namespace v2rayN.Forms
                                     entry.ExtractToFile(Utils.GetPath(entry.Name), true);
                                 }
                             }
-                            v2rayHandler_ProcessEvent(false, "更新V2rayCore成功！正在重启服务...");
+                            AppendText(false, UIRes.I18N("MsgUpdateV2rayCoreSuccessfullyMore"));
 
                             Global.reloadV2ray = true;
                             LoadV2ray();
 
-                            v2rayHandler_ProcessEvent(false, "更新V2rayCore成功！");
+                            AppendText(false, UIRes.I18N("MsgUpdateV2rayCoreSuccessfully"));
                         }
                         catch (Exception ex)
                         {
-                            v2rayHandler_ProcessEvent(false, ex.Message);
+                            AppendText(false, ex.Message);
                         }
                     }
                     else
                     {
-                        v2rayHandler_ProcessEvent(false, args.Msg);
+                        AppendText(false, args.Msg);
                     }
                 };
                 v2rayUpdateHandle.Error += (sender2, args) =>
                 {
-                    v2rayHandler_ProcessEvent(true, args.GetException().Message);
+                    AppendText(true, args.GetException().Message);
                 };
             }
 
-            v2rayHandler_ProcessEvent(false, "开始更新V2rayCore...");
+            AppendText(false, UIRes.I18N("MsgStartUpdatingV2rayCore"));
             v2rayUpdateHandle.AbsoluteV2rayCore(config);
         }
 
@@ -1122,19 +1213,19 @@ namespace v2rayN.Forms
                 {
                     if (args.Success)
                     {
-                        v2rayHandler_ProcessEvent(false, "PAC更新成功！");
+                        AppendText(false, UIRes.I18N("MsgPACUpdateSuccessfully"));
                     }
                     else
                     {
-                        v2rayHandler_ProcessEvent(false, "PAC更新失败！");
+                        AppendText(false, UIRes.I18N("MsgPACUpdateFailed"));
                     }
                 };
                 pacListHandle.Error += (sender2, args) =>
                 {
-                    v2rayHandler_ProcessEvent(true, args.GetException().Message);
+                    AppendText(true, args.GetException().Message);
                 };
             }
-            v2rayHandler_ProcessEvent(false, "开始更新PAC...");
+            AppendText(false, UIRes.I18N("MsgStartUpdatingPAC"));
             pacListHandle.UpdatePACFromGFWList(config);
         }
 
@@ -1143,7 +1234,7 @@ namespace v2rayN.Forms
             try
             {
                 File.WriteAllText(Utils.GetPath(Global.pacFILE), Utils.GetEmbedText(Global.BlankPacFileName), Encoding.UTF8);
-                v2rayHandler_ProcessEvent(false, "简化PAC成功！");
+                AppendText(false, UIRes.I18N("MsgSimplifyPAC"));
             }
             catch (Exception ex)
             {
@@ -1159,11 +1250,6 @@ namespace v2rayN.Forms
             System.Diagnostics.Process.Start(Global.GithubIssuesUrl);
         }
 
-        private void tsbTelegramGroup_Click(object sender, EventArgs e)
-        {
-            System.Diagnostics.Process.Start(Global.TelegramGroupUrl);
-        }
-
         private void tsbDonate_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start(Global.DonateUrl);
@@ -1174,6 +1260,10 @@ namespace v2rayN.Forms
             System.Diagnostics.Process.Start(Global.AboutUrl);
         }
 
+        private void tsbPromotion_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start(Global.PromotionUrl);
+        }
         #endregion
 
         #region ScanScreen
@@ -1192,13 +1282,13 @@ namespace v2rayN.Forms
             string result = Convert.ToString(e.UserState);
             if (string.IsNullOrEmpty(result))
             {
-                UI.Show("扫描完成,未发现有效二维码");
+                UI.Show(UIRes.I18N("NoValidQRcodeFound"));
             }
             else
             {
                 if (AddBatchServers(result) == 0)
                 {
-                    UI.Show(string.Format("扫描导入URL成功"));
+                    UI.Show(UIRes.I18N("SuccessfullyImportedServerViaScan"));
                 }
             }
         }
@@ -1211,16 +1301,17 @@ namespace v2rayN.Forms
             SubSettingForm fm = new SubSettingForm();
             if (fm.ShowDialog() == DialogResult.OK)
             {
+                RefreshServers();
             }
         }
 
         private void tsbSubUpdate_Click(object sender, EventArgs e)
         {
-            v2rayHandler_ProcessEvent(false, "更新订阅开始");
+            AppendText(false, UIRes.I18N("MsgUpdateSubscriptionStart"));
 
             if (config.subItem == null || config.subItem.Count <= 0)
             {
-                v2rayHandler_ProcessEvent(false, "未设置有效的订阅");
+                AppendText(false, UIRes.I18N("MsgNoValidSubscription"));
                 return;
             }
 
@@ -1229,9 +1320,13 @@ namespace v2rayN.Forms
                 string id = config.subItem[k - 1].id.Trim();
                 string url = config.subItem[k - 1].url.Trim();
                 string hashCode = $"{k}->";
+                if (config.subItem[k - 1].enabled == false)
+                {
+                    continue;
+                }
                 if (Utils.IsNullOrEmpty(id) || Utils.IsNullOrEmpty(url))
                 {
-                    v2rayHandler_ProcessEvent(false, $"{hashCode}未设置有效的订阅");
+                    AppendText(false, $"{hashCode}{UIRes.I18N("MsgNoValidSubscription")}");
                     continue;
                 }
 
@@ -1240,42 +1335,61 @@ namespace v2rayN.Forms
                 {
                     if (args.Success)
                     {
-                        v2rayHandler_ProcessEvent(false, $"{hashCode}获取订阅内容成功");
+                        AppendText(false, $"{hashCode}{UIRes.I18N("MsgGetSubscriptionSuccessfully")}");
                         var result = Utils.Base64Decode(args.Msg);
                         if (Utils.IsNullOrEmpty(result))
                         {
-                            v2rayHandler_ProcessEvent(false, $"{hashCode}订阅内容解码失败(非BASE64码)");
+                            AppendText(false, $"{hashCode}{UIRes.I18N("MsgSubscriptionDecodingFailed")}");
                             return;
                         }
 
                         ConfigHandler.RemoveServerViaSubid(ref config, id);
-                        v2rayHandler_ProcessEvent(false, $"{hashCode}清除原订阅内容");
+                        AppendText(false, $"{hashCode}{UIRes.I18N("MsgClearSubscription")}");
                         RefreshServers();
                         if (AddBatchServers(result, id) == 0)
                         {
                         }
                         else
                         {
-                            v2rayHandler_ProcessEvent(false, $"{hashCode}导入订阅内容失败");
+                            AppendText(false, $"{hashCode}{UIRes.I18N("MsgFailedImportSubscription")}");
                         }
-                        v2rayHandler_ProcessEvent(false, $"{hashCode}更新订阅结束");
+                        AppendText(false, $"{hashCode}{UIRes.I18N("MsgUpdateSubscriptionEnd")}");
                     }
                     else
                     {
-                        v2rayHandler_ProcessEvent(false, args.Msg);
+                        AppendText(false, args.Msg);
                     }
                 };
                 v2rayUpdateHandle3.Error += (sender2, args) =>
                 {
-                    v2rayHandler_ProcessEvent(true, args.GetException().Message);
+                    AppendText(true, args.GetException().Message);
                 };
 
                 v2rayUpdateHandle3.WebDownloadString(url);
-                v2rayHandler_ProcessEvent(false, $"{hashCode}开始获取订阅内容");
+                AppendText(false, $"{hashCode}{UIRes.I18N("MsgStartGettingSubscriptions")}");
             }
 
 
         }
+
+        #endregion
+
+        #region Language
+
+        private void tsbLanguageDef_Click(object sender, EventArgs e)
+        {
+            SetCurrentLanguage("en");
+        }
+
+        private void tsbLanguageZhHans_Click(object sender, EventArgs e)
+        {
+            SetCurrentLanguage("zh-Hans");
+        }
+        private void SetCurrentLanguage(string value)
+        {
+            Utils.RegWriteValue(Global.MyRegPath, Global.MyRegKeyLanguage, value);
+        }
+
         #endregion
 
     }
